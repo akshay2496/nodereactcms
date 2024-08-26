@@ -7,6 +7,7 @@ const UpdateProduct = () => {
   const [category, setCategory] = useState("");
   const [company, setCompany] = useState("");
   const [productImage, setFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(""); // State for image preview
   const params = useParams();
   const navigate = useNavigate();
 
@@ -15,12 +16,22 @@ const UpdateProduct = () => {
     getProductDetails();
   }, [params.id]);
 
+  useEffect(() => {
+    if (productImage) {
+      const objectUrl = URL.createObjectURL(productImage);
+      setImagePreview(objectUrl);
+
+      // Clean up the object URL when the component unmounts or image changes
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+  }, [productImage]);
+
   const getProductDetails = async () => {
     let result = await fetch(
-      `http://localhost:5000/product-update/${params.id}`,{
-        headers:{
+      `http://localhost:5000/product-update/${params.id}`, {
+        headers: {
           authorization: `bearer ${JSON.parse(localStorage.getItem('token'))}`
-      }
+        }
       }
     );
     result = await result.json();
@@ -29,48 +40,57 @@ const UpdateProduct = () => {
     setPrice(result.price);
     setCategory(result.category);
     setCompany(result.company);
-    setCompany(result.company);
     setFile(null);
+    setImagePreview("http://localhost:5000/"+result.image); // Reset image preview when loading new product details
   };
 
   const handleUpdateProduct = async () => {
-    console.warn(name, price, category, company);
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("price", price);
+    formData.append("category", category);
+    formData.append("company", company);
   
- 
+    if (productImage) {
+      formData.append("productImage", productImage);
+    }
+
+    try {
       let response = await fetch(
         `http://localhost:5000/product-update/${params.id}`,
         {
           method: "PUT",
           headers: {
-            "Content-Type": "application/json",
-             authorization: `bearer ${JSON.parse(localStorage.getItem('token'))}`
+            authorization: `bearer ${JSON.parse(localStorage.getItem('token'))}`
           },
-          body: JSON.stringify({
-            name,
-            price,
-            category,
-            company,
-          }),
+          body: formData,
         }
       );
-      
-      let result = await response.json(); // Use let here to allow reassignment
+  
+      if (!response.ok) {
+        throw new Error("Failed to update product");
+      }
+  
+      let result = await response.json();
       console.warn(result);
       navigate("/");
-   
+    } catch (error) {
+      console.error("Error updating product:", error);
+      alert("Failed to update product. Please try again.");
+    }
   };
 
   return (
     <div className="mt-20">
-      <h3 className="text-center text-3xl font-customSemiBold">Add Product</h3>
+      <h3 className="text-center text-3xl font-customSemiBold">Update Product</h3>
       <div className="w-2/5 mx-auto shadow rounded-md p-10 mt-5">
         <div className="mb-3">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border rounded-md p-3 border-blue-300 "
-            placeholder="enter product name"
+            className="w-full border rounded-md p-3 border-blue-300"
+            placeholder="Enter product name"
           />
           {/* {error && !name && <span className="block text-red-600 text-sm">Enter valid name.</span>} */}
         </div>
@@ -80,29 +100,29 @@ const UpdateProduct = () => {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             className="w-full border rounded-md p-3 border-blue-300"
-            placeholder="enter product price"
+            placeholder="Enter product price"
           />
-          {/* {error && !price && <span className="block text-red-600 text-sm ">Enter valid price.</span>} */}
+          {/* {error && !price && <span className="block text-red-600 text-sm">Enter valid price.</span>} */}
         </div>
         <div className="mb-3">
           <input
             type="text"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full border rounded-md p-3 border-blue-300 "
-            placeholder="enter product category"
+            className="w-full border rounded-md p-3 border-blue-300"
+            placeholder="Enter product category"
           />
-          {/* {error && !price && <span className="block text-red-600 text-sm ">Enter valid category.</span>} */}
+          {/* {error && !category && <span className="block text-red-600 text-sm">Enter valid category.</span>} */}
         </div>
         <div className="mb-3">
           <input
             type="text"
             value={company}
             onChange={(e) => setCompany(e.target.value)}
-            className="w-full border rounded-md p-3 border-blue-300 "
-            placeholder="enter product company"
+            className="w-full border rounded-md p-3 border-blue-300"
+            placeholder="Enter product company"
           />
-          {/* {error && !company && <span className="block text-red-600 text-sm ">Enter valid company.</span>} */}
+          {/* {error && !company && <span className="block text-red-600 text-sm">Enter valid company.</span>} */}
         </div>
         <div className="mb-3">
           <input
@@ -111,6 +131,15 @@ const UpdateProduct = () => {
             onChange={(e) => setFile(e.target.files[0])}
           />
           {/* {error && !productImage && <span className="block text-red-600 text-sm">Please upload an image.</span>} */}
+          {imagePreview && (
+            <div className="mt-3">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="w-full h-auto border rounded-md"
+              />
+            </div>
+          )}
         </div>
         <button
           type="submit"
